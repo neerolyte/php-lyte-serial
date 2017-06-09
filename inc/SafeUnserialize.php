@@ -127,6 +127,9 @@ class LyteSafeUnserialise {
 		do {
 			$length .= $data[$offset];
 			$offset++;
+			if (!isset($data[$offset])) {
+				throw new Exception('Unable to determine length');
+			}
 		} while ($data[$offset] >= '0' && $data[$offset] <= '9');
 		return (int)$length;
 	}

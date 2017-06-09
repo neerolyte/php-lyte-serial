@@ -129,9 +129,23 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 			$this->assertSame($expectedLength, $length);
 			$this->assertSame($expectedOffset, $offset);
 		};
-		$checkValidLength('1', 0, 1, 1);
-		$checkValidLength('12', 0, 12, 2);
-		$checkValidLength('12345', 1, 2345, 5);
+		$checkValidLength('1:', 0, 1, 1);
+		$checkValidLength('12:', 0, 12, 2);
+		$checkValidLength('12345:', 1, 2345, 5);
+
+		$checkInvalidLength = function($data, $offset) use ($that, $serial) {
+			$caught = false;
+			try {
+				$serial->getLength($data, $offset);
+			} catch (Exception $e) {
+				$caught = true;
+			}
+			$this->assertTrue($caught);
+		};
+
+		$checkInvalidLength('1', 0);
+		$checkInvalidLength(':1', 1);
+		$checkInvalidLength('1234123', 1);
 	}
 
 	public function testGetType() {
