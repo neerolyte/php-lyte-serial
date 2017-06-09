@@ -1,8 +1,8 @@
 {
-  "name": "lyte/unserialize",
+  "name": "lyte/serial",
   "description": "A safe unserializer for PHP serialized arrays and scalar types.",
   "minimum-stability": "stable",
-  "license": "proprietary",
+  "license": "MIT",
   "authors": [
     {
       "name": "David Schoen",
