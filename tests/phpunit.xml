@@ -1,0 +1,7 @@
+<phpunit colors="true" backupGlobals="false">
+	<testsuites>
+		<testsuite name="SafeUnserialize">
+			<directory suffix=".php">.</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>
