@@ -4,7 +4,14 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	public function checkUnserialize($data) {
 		$string = serialize($data);
 		$serial = new LyteSafeUnserialise();
-		$this->assertSame($data, $serial->unserialize($string));
+		$offset = 0;
+		$stringUnserialized = $serial->_unserialize($string, $offset);
+		$this->assertSame($data, $stringUnserialized);
+		$this->assertSame(
+			strlen($string),
+			$offset,
+			"$string"
+		);
 	}
 
 	public function testNull() {
@@ -21,6 +28,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	public function testArray() {
 		$this->checkUnserialize(array());
 		$this->checkUnserialize(array(1));
+		$this->checkUnserialize(array('foo'));
 	}
 
 	public function testBool() {
@@ -36,14 +44,30 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	public function testDouble() {
 		$this->checkUnserialize(1.23);
 		$this->checkUnserialize(.987129837123);
+		$this->checkUnserialize(-812673987612398761298736129367);
 	}
 
 	public function testComplex() {
-		$this->fail("todo");
+		$this->checkUnserialize(array('foo' => array('bar')));
+		$this->checkUnserialize(array('foo' => array(serialize('bar'))));
+	}
+
+	public function checkMalicious($str) {
+		$serial = new LyteSafeUnserialise();
+		$caught = false;
+		try {
+			$serial->unserialize($str);
+		} catch (Exception $e) {
+			$caught = true;
+		}
+		$this->assertTrue($caught);
 	}
 
 	public function testMalicious() {
-		$this->fail("todo");
+		$this->checkMalicious(serialize(new stdClass()));
+		$this->checkMalicious(serialize(array(new stdClass())));
+		$this->checkMalicious('C:8:"stdClass":0:{}');
+		$this->checkMalicious('a:3:{}');
 	}
 
 	public function testExpect() {

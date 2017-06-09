@@ -7,10 +7,10 @@ class LyteSafeUnserialise {
 			throw new Exception("Data supplied for unserialisation was not a string.");
 		}
 		$offset = 0;
-		return $this->unserializeType($data, $offset);
+		return $this->_unserialize($data, $offset);
 	}
 
-	public function unserializeType($data, &$offset) {
+	public function _unserialize($data, &$offset) {
 		$method = 'unserialize'.$this->getType($data, $offset);
 		return $this->$method($data, $offset);
 	}
@@ -20,6 +20,9 @@ class LyteSafeUnserialise {
 			'a' => 'array',
 			'N' => 'null',
 			's' => 'string',
+			'i' => 'integer',
+			'b' => 'boolean',
+			'd' => 'double',
 		);
 		$type = $data[$offset];
 		if (!isset($types[$type])) {
@@ -38,7 +41,8 @@ class LyteSafeUnserialise {
 		}
 	}
 
-	public function unserializeNull() {
+	public function unserializeNull($data, &$offset) {
+		$this->expect($data, $offset, ';');
 		return null;
 	}
 
@@ -47,22 +51,70 @@ class LyteSafeUnserialise {
 		$length = $this->getLength($data, $offset);
 		$this->expect($data, $offset, ':"');
 		$str = substr($data,$offset, $length);
-		$offset += $length + 1;
+		$offset += $length;
+		$this->expect($data, $offset, '";');
 		return $str;
+	}
+
+	public function unserializeInteger($data, &$offset) {
+		$this->expect($data, $offset, ':');
+		if (!preg_match('%^(-?[0-9]+);%', substr($data, $offset), $match)) {
+			throw new Exception("Unable to find integer at $offset");
+		}
+		$res = (int)$match[1];
+		$offset += strlen($match[0]);
+		return $res;
+	}
+
+	public function unserializeDouble($data, &$offset) {
+		$this->expect($data, $offset, ':');
+		static $re = '%^
+			(
+				-? # optionally negative
+				[0-9]+ # number must exist
+				(\.[0-9]+)? # optional decimal place
+				(E\+[0-9]+)? # optional exponent
+			);
+		%xS';
+		if (!preg_match($re, substr($data, $offset), $match)) {
+			throw new Exception("Unable to find double at $offset");
+		}
+		$res = (double)$match[1];
+		$offset += strlen($match[0]);
+		return $res;
+	}
+
+	public function unserializeBoolean($data, &$offset) {
+		static $map = array(
+			'1' => true,
+			'0' => false,
+		);
+		$this->expect($data, $offset, ':');
+		$val = $data[$offset];
+		if (!isset($map[$val])) {
+			throw new Exception("$val is not an acceptable boolean");
+		}
+		$offset++;
+		$this->expect($data, $offset, ';');
+		return $map[$val];
 	}
 
 	/**
 	 * Unserialise an array starting at $offset
 	 */
-	public function unserializeArray($data, $offset) {
-		$offset += 2;
+	public function unserializeArray($data, &$offset) {
+		$this->expect($data, $offset, ':');
 		$length = $this->getLength($data, $offset);
+		$this->expect($data, $offset, ':{');
 		$arr = array();
 
 		for ($i = 0; $i < $length; $i++) {
-			fwrite(STDERR, $data."\n");
-			$arr []= $unserialize();
+			$key = $this->_unserialize($data, $offset);
+			$val = $this->_unserialize($data, $offset);
+			$arr[$key] = $val;
 		}
+
+		$this->expect($data, $offset, '}');
 
 		return $arr;
 	}
