@@ -1,5 +1,7 @@
 # PHP Lyte Serial
 
+[![Build Status](https://travis-ci.org/neerolyte/php-lyte-serial.png)](https://travis-ci.org/neerolyte/php-lyte-serial)
+
 PHP Serialized string array and scalar unserialization using pure PHP.
 
 # Why?
