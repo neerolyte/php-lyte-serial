@@ -1,6 +1,6 @@
 # PHP Lyte Serial
 
-[![Build Status](https://travis-ci.org/neerolyte/php-lyte-serial.png)](https://travis-ci.org/neerolyte/php-lyte-serial)
+[![Build Status](https://api.travis-ci.org/neerolyte/php-lyte-serial.svg?branch=master)](https://travis-ci.org/neerolyte/php-lyte-serial)
 
 PHP Serialized string array and scalar unserialization using pure PHP.
 
