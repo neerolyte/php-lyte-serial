@@ -1,5 +1,9 @@
 <?php
+
 require_once(dirname(__DIR__).'/inc/SafeUnserialize.php');
+if (!class_exists('PHPUnit_Framework_TestCase')) {
+	class_alias('PHPUnit\\Framework\\TestCase','PHPUnit_Framework_TestCase');
+}
 class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	public function checkUnserialize($data) {
 		$string = serialize($data);
