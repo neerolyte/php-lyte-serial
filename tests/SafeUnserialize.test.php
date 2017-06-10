@@ -191,4 +191,10 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 			$this->assertSame($throws, $caught);
 		}
 	}
+
+	public function testMultibyte() {
+		$this->checkUnserialize("😄👏🎆");
+		$this->checkUnserialize("你好世界");
+		$this->checkUnserialize("\x93bendy quotes\x94");
+	}
 }
