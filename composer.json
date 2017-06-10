@@ -9,6 +9,9 @@
       "email": "dave@lyte.id.au"
     }
   ],
+  "require": {
+    "php": ">=5.4"
+  }
   "require-dev": {
     "phpunit/phpunit": "*"
   },
