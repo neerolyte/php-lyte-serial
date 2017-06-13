@@ -1,24 +1,41 @@
 <?php
 namespace Lyte\Serial;
 class Unserializer {
-	public function unserialize($data) {
+	private $data;
+
+	/**
+	 * Our offset through the data
+	 *
+	 * This is public, but you're not actually expected to update it. I'm not
+	 * your mum though.
+	 *
+	 * @var int
+	 */
+	public $offset = 0;
+
+	public function __construct($data) {
 		if (!is_string($data)) {
 			throw new \Exception("Data supplied for unserialisation was not a string.");
 		}
-		$offset = 0;
-		$ret = $this->_unserialize($data, $offset);
-		if ($offset !== strlen($data)) {
+		$this->data = $data;
+	}
+
+	public function unserialize() {
+		$this->offset = 0;
+		$ret = $this->_unserialize();
+		if ($this->offset !== strlen($this->data)) {
 			throw new \Exception("Data continues beyond end of initial value");
 		}
 		return $ret;
 	}
 
-	public function _unserialize($data, &$offset) {
-		$method = 'unserialize'.$this->getType($data, $offset);
-		return $this->$method($data, $offset);
+	private function _unserialize() {
+		$method = 'unserialize'.$this->getType();
+		$ret = $this->$method();
+		return $ret;
 	}
 
-	public function getType($data, &$offset) {
+	public function getType() {
 		static $types = array(
 			'a' => 'array',
 			'N' => 'null',
@@ -27,54 +44,54 @@ class Unserializer {
 			'b' => 'boolean',
 			'd' => 'double',
 		);
-		$type = $data[$offset];
+		$type = $this->data[$this->offset];
 		if (!isset($types[$type])) {
 			throw new \Exception("Unhandled type '{$type}'");
 		}
-		$offset++;
+		$this->offset++;
 		return $types[$type];
 	}
 
-	public function expect($data, &$offset, $expected) {
+	public function expect($expected) {
 		for ($i = 0; $i < strlen($expected); $i++) {
-			if ($expected[$i] !== $data[$offset]) {
-				throw new \Exception("Unexpected character at $offset, got '{$data[$offset]}' expecting '{$expected[$i]}'");
+			if ($expected[$i] !== $this->data[$this->offset]) {
+				throw new \Exception("Unexpected character at {$this->offset}, got '{$this->data[$this->offset]}' expecting '{$expected[$i]}'");
 			}
-			$offset++;
+			$this->offset++;
 		}
 	}
 
-	public function unserializeNull($data, &$offset) {
-		$this->expect($data, $offset, ';');
+	public function unserializeNull() {
+		$this->expect(';');
 		return null;
 	}
 
-	public function unserializeString($data, &$offset) {
-		$this->expect($data, $offset, ':');
-		$length = $this->getLength($data, $offset);
-		$this->expect($data, $offset, ':"');
-		$str = substr($data,$offset, $length);
-		$offset += $length;
-		$this->expect($data, $offset, '";');
+	public function unserializeString() {
+		$this->expect(':');
+		$length = $this->getLength($this->data, $this->offset);
+		$this->expect(':"');
+		$str = substr($this->data, $this->offset, $length);
+		$this->offset += $length;
+		$this->expect('";');
 		return $str;
 	}
 
-	public function regex($pattern, $data, &$offset) {
-		if (!preg_match($pattern, substr($data, $offset), $match)) {
-			throw new \Exception("Unable to detect pattern at $offset");
+	public function regex($pattern) {
+		if (!preg_match($pattern, substr($this->data, $this->offset), $match)) {
+			throw new \Exception("Unable to detect pattern at {$this->offset}");
 		}
-		$offset += strlen($match[0]);
+		$this->offset += strlen($match[0]);
 		return $match;
 	}
 
-	public function unserializeInteger($data, &$offset) {
-		$this->expect($data, $offset, ':');
-		$match = $this->regex('%^(-?[0-9]+);%S', $data, $offset);
+	public function unserializeInteger() {
+		$this->expect(':');
+		$match = $this->regex('%^(-?[0-9]+);%S', $data, $this->offset);
 		return (int)$match[1];
 	}
 
-	public function unserializeDouble($data, &$offset) {
-		$this->expect($data, $offset, ':');
+	public function unserializeDouble() {
+		$this->expect(':');
 		static $pattern = '%^
 			(
 				-? # optionally negative
@@ -87,37 +104,37 @@ class Unserializer {
 		return (double)$match[1];
 	}
 
-	public function unserializeBoolean($data, &$offset) {
+	public function unserializeBoolean() {
 		static $map = array(
 			'1' => true,
 			'0' => false,
 		);
-		$this->expect($data, $offset, ':');
-		$val = $data[$offset];
+		$this->expect(':');
+		$val = $this->data[$this->offset];
 		if (!isset($map[$val])) {
 			throw new \Exception("$val is not an acceptable boolean");
 		}
-		$offset++;
-		$this->expect($data, $offset, ';');
+		$this->offset++;
+		$this->expect(';');
 		return $map[$val];
 	}
 
 	/**
 	 * Unserialise an array starting at $offset
 	 */
-	public function unserializeArray($data, &$offset) {
-		$this->expect($data, $offset, ':');
-		$length = $this->getLength($data, $offset);
-		$this->expect($data, $offset, ':{');
+	public function unserializeArray() {
+		$this->expect(':');
+		$length = $this->getLength();
+		$this->expect(':{');
 		$arr = array();
 
 		for ($i = 0; $i < $length; $i++) {
-			$key = $this->_unserialize($data, $offset);
-			$val = $this->_unserialize($data, $offset);
+			$key = $this->_unserialize();
+			$val = $this->_unserialize();
 			$arr[$key] = $val;
 		}
 
-		$this->expect($data, $offset, '}');
+		$this->expect('}');
 
 		return $arr;
 	}
@@ -125,15 +142,15 @@ class Unserializer {
 	/**
 	 * Get the length of whatever is starting at $offset
 	 */
-	public function getLength($data, &$offset) {
+	public function getLength() {
 		$length = 0;
 		do {
-			$length .= $data[$offset];
-			$offset++;
-			if (!isset($data[$offset])) {
+			$length .= $this->data[$this->offset];
+			$this->offset++;
+			if (!isset($this->data[$this->offset])) {
 				throw new \Exception('Unable to determine length');
 			}
-		} while ($data[$offset] >= '0' && $data[$offset] <= '9');
+		} while ($this->data[$this->offset] >= '0' && $this->data[$this->offset] <= '9');
 		return (int)$length;
 	}
 }

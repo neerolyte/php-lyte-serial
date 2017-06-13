@@ -8,13 +8,17 @@ if (!class_exists('PHPUnit_Framework_TestCase')) {
 class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	public function checkUnserialize($data) {
 		$string = serialize($data);
-		$serial = new Unserializer();
+		$this->checkUnserializesTo($string, $data);
+	}
+
+	public function checkUnserializesTo($string, $data) {
+		$serial = new Unserializer($string);
 		$offset = 0;
-		$stringUnserialized = $serial->_unserialize($string, $offset);
-		$this->assertSame($data, $stringUnserialized);
+		$actualData = $serial->unserialize();
+		$this->assertSame($data, $actualData);
 		$this->assertSame(
 			strlen($string),
-			$offset,
+			$serial->offset,
 			"$string"
 		);
 	}
@@ -29,6 +33,9 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 		$this->checkUnserialize("foobarbaz");
 		$this->checkUnserialize("foobarbazfoobarbazfoobarbaz");
 		$this->checkUnserialize("foo\x00bar");
+		$this->checkUnserialize("😄👏🎆");
+		$this->checkUnserialize("你好世界");
+		$this->checkUnserialize("\x93bendy quotes\x94");
 	}
 
 	public function testArray() {
@@ -39,8 +46,9 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	}
 
 	public function testBool() {
-		$this->checkUnserialize(true);
-		$this->checkUnserialize(false);
+		$this->checkUnserializesTo('b:1;', true);
+		$this->checkMalicious('b:1');
+		$this->checkUnserializesTo('b:0;', false);
 		$this->checkMalicious("b:3;");
 	}
 
@@ -62,8 +70,8 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	}
 
 	public function checkMalicious($str) {
-		$serial = new Unserializer();
-		$this->checkMethodThrows($serial, 'unserialize', array($str));
+		$serial = new Unserializer($str);
+		$this->checkMethodThrows($serial, 'unserialize');
 	}
 
 	public function testMalicious() {
@@ -76,33 +84,31 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 
 	public function testExpect() {
 		$that = $this;
-		$checkExpectThrows = function($args) use ($that) {
-			$serial = new Unserializer();
-			// turn $offset in to a reference
-			$offset = $args[1];
-			$args[1] = &$offset;
+		$checkExpectThrows = function($data, $chars) use ($that) {
+			$serial = new Unserializer($data);
+			//$serial->offset = ;
 			$that->checkMethodThrows(
 				$serial,
 				'expect',
-				$args,
+				array($chars),
 				"/^Unexpected character at /"
 			);
 		};
 		$checkExpect = function($args, $expected) use ($that) {
-			$serial = new Unserializer();
-			$offset = $args[1];
-			$serial->expect($args[0], $offset, $args[2]);
-			$this->assertSame($expected, $offset);
+			$serial = new Unserializer($args[0]);
+			$serial->offset = $args[1];
+			$serial->expect($args[2]);
+			$this->assertSame($expected, $serial->offset);
 		};
 
 		$checkExpect(array('1234', 0, '123'), 3);
 		$checkExpect(array('123', 2, '3'), 3);
 		$checkExpect(array('123', 0, '12'), 2);
-		$checkExpectThrows(array('12', 0, '2'));
-		$checkExpectThrows(array('12', 0, '23'));
+		$checkExpectThrows('12', '2');
+		$checkExpectThrows('12', '23');
 	}
 
-	public function checkMethodThrows($object, $method, $args, $exceptionRe = '/./') {
+	public function checkMethodThrows($object, $method, $args = array(), $exceptionRe = '/./') {
 		$caught = false;
 		try {
 			call_user_func_array(array($object, $method), $args);
@@ -114,18 +120,21 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	}
 
 	public function testLength() {
-		$serial = new Unserializer();
 		$that = $this;
-		$checkValidLength = function($data, $offset, $expectedLength, $expectedOffset) use ($that, $serial) {
-			$length = $serial->getLength($data, $offset);
+		$checkValidLength = function($data, $offset, $expectedLength, $expectedOffset) use ($that) {
+			$serial = new Unserializer($data);
+			$serial->offset = $offset;
+			$length = $serial->getLength();
 			$this->assertSame($expectedLength, $length);
-			$this->assertSame($expectedOffset, $offset);
+			$this->assertSame($expectedOffset, $serial->offset);
 		};
 		$checkValidLength('1:', 0, 1, 1);
 		$checkValidLength('12:', 0, 12, 2);
 		$checkValidLength('12345:', 1, 2345, 5);
 
-		$checkInvalidLength = function($data, $offset) use ($that, $serial) {
+		$checkInvalidLength = function($data, $offset) use ($that) {
+			$serial = new Unserializer($data);
+			$serial->offset = $offset;
 			$that->checkMethodThrows($serial, 'getLength', array($data, &$offset), '/Unable to determine length/');
 		};
 
@@ -137,24 +146,18 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	public function testGetType() {
 		$that = $this;
 		$checkGetType = function($data, $expectedType, $offset = 0, $expectedOffset = 1) use ($that) {
-			$serial = new Unserializer();
-			$type = $serial->getType($data, $offset);
+			$serial = new Unserializer($data);
+			$serial->offset = $offset;
+			$type = $serial->getType();
 			$this->assertSame($expectedType, $type);
-			$this->assertSame($expectedOffset, $offset);
+			$this->assertSame($expectedOffset, $serial->offset);
 		};
 		$checkGetType('a:', 'array');
 		$checkGetType('Xa:', 'array', 1, 2);
 		$checkGetType('N;', 'null');
 		$checkGetType('s:', 'string');
 
-		$serial = new Unserializer();
-		$offset = 0;
-		$this->checkMethodThrows($serial, 'getType', array('O:', &$offset), "/^Unhandled type 'O'$/");
-	}
-
-	public function testMultibyte() {
-		$this->checkUnserialize("😄👏🎆");
-		$this->checkUnserialize("你好世界");
-		$this->checkUnserialize("\x93bendy quotes\x94");
+		$serial = new Unserializer('O:');
+		$this->checkMethodThrows($serial, 'getType', array(), "/^Unhandled type 'O'$/");
 	}
 }
