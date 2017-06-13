@@ -192,7 +192,7 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	 */
 	public function setExpectedException($type, $message = '', $code = null) {
 		if (is_callable('parent::setExpectedException')) {
-			parent::setExpectedException($type, $message);
+			return parent::setExpectedException($type, $message);
 		}
 		$this->expectException($type);
 		if (!empty($message))
