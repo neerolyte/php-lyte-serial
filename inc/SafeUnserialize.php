@@ -1,6 +1,4 @@
 <?php
-// even if we upgrade to php7, don't use native serialize
-// see: https://media.ccc.de/v/33c3-7858-exploiting_php7_unserialize#video&t=325
 class LyteSafeUnserialise {
 	public function unserialize($data) {
 		if (!is_string($data)) {
