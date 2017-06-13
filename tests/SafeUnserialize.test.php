@@ -76,12 +76,12 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	}
 
 	public function testCanNotInstantiateWithObject() {
-		$this->expectExceptionMessage('Data supplied for unserialization was not a string');
+		$this->setExpectedException('Exception', 'Data supplied for unserialization was not a string');
 		new Unserializer(new \stdClass());
 	}
 
 	public function testUnserializeStdClass() {
-		$this->expectExceptionMessage("Unhandled type 'O'");
+		$this->setExpectedException('Exception', "Unhandled type 'O'");
 		(new Unserializer(serialize(new \stdClass())))->unserialize();
 	}
 
@@ -117,7 +117,7 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	 */
 	public function testExpectFailing($data, $chars) {
 		$serial = new Unserializer($data);
-		$this->expectException('Exception');
+		$this->setExpectedException('Exception');
 		$serial->expect($chars);
 
 	}
@@ -155,8 +155,7 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	public function testInvalidLength($data, $offset = 0) {
 		$serial = new Unserializer($data);
 		$serial->offset = $offset;
-		$this->expectException('Exception');
-		$this->expectExceptionMessage('Unable to determine length');
+		$this->setExpectedException('Exception', 'Unable to determine length');
 		$serial->getLength();
 	}
 
@@ -184,8 +183,7 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	}
 
 	public function testGetTypeOfObject() {
-		$this->expectException('Exception');
-		$this->expectExceptionMessage("Unhandled type 'O'");
+		$this->setExpectedException('Exception', "Unhandled type 'O'");
 		(new Unserializer('O:'))->unserialize();
 	}
 }
