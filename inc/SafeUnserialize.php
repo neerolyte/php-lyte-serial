@@ -7,7 +7,11 @@ class LyteSafeUnserialise {
 			throw new Exception("Data supplied for unserialisation was not a string.");
 		}
 		$offset = 0;
-		return $this->_unserialize($data, $offset);
+		$ret = $this->_unserialize($data, $offset);
+		if ($offset !== strlen($data)) {
+			throw new Exception("Data continues beyond end of initial value");
+		}
+		return $ret;
 	}
 
 	public function _unserialize($data, &$offset) {

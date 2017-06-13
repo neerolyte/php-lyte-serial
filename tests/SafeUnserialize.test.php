@@ -27,12 +27,14 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 		$this->checkUnserialize("bar");
 		$this->checkUnserialize("foobarbaz");
 		$this->checkUnserialize("foobarbazfoobarbazfoobarbaz");
+		$this->checkUnserialize("foo\x00bar");
 	}
 
 	public function testArray() {
 		$this->checkUnserialize(array());
 		$this->checkUnserialize(array(1));
 		$this->checkUnserialize(array('foo'));
+		$this->checkUnserialize(array(chr(0) => chr(0)));
 	}
 
 	public function testBool() {
@@ -59,12 +61,13 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	public function checkMalicious($str) {
 		$serial = new LyteSafeUnserialise();
 		$caught = false;
+		$obj = false;
 		try {
-			$serial->unserialize($str);
+			$obj = $serial->unserialize($str);
 		} catch (Exception $e) {
 			$caught = true;
 		}
-		$this->assertTrue($caught);
+		$this->assertTrue($caught, "Resulting object: ".var_export($object, true));
 	}
 
 	public function testMalicious() {
@@ -72,6 +75,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 		$this->checkMalicious(serialize(array(new stdClass())));
 		$this->checkMalicious('C:8:"stdClass":0:{}');
 		$this->checkMalicious('a:3:{}');
+		$this->checkMalicious("N;\x00");
 	}
 
 	public function testExpect() {
