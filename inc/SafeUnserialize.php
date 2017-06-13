@@ -2,6 +2,7 @@
 namespace Lyte\Serial;
 class Unserializer {
 	private $data;
+	private $length;
 
 	/**
 	 * Our offset through the data
@@ -15,15 +16,16 @@ class Unserializer {
 
 	public function __construct($data) {
 		if (!is_string($data)) {
-			throw new \Exception("Data supplied for unserialisation was not a string.");
+			throw new \Exception("Data supplied for unserialization was not a string");
 		}
 		$this->data = $data;
+		$this->length = strlen($data);
 	}
 
 	public function unserialize() {
 		$this->offset = 0;
 		$ret = $this->_unserialize();
-		if ($this->offset !== strlen($this->data)) {
+		if ($this->offset !== $this->length) {
 			throw new \Exception("Data continues beyond end of initial value");
 		}
 		return $ret;
@@ -53,7 +55,11 @@ class Unserializer {
 	}
 
 	public function expect($expected) {
-		for ($i = 0; $i < strlen($expected); $i++) {
+		$length = strlen($expected);
+		for ($i = 0; $i < $length; $i++) {
+			if ($i >= $this->length) {
+				throw new \Exception("Ran out of data");
+			}
 			if ($expected[$i] !== $this->data[$this->offset]) {
 				throw new \Exception("Unexpected character at {$this->offset}, got '{$this->data[$this->offset]}' expecting '{$expected[$i]}'");
 			}
@@ -86,7 +92,7 @@ class Unserializer {
 
 	public function unserializeInteger() {
 		$this->expect(':');
-		$match = $this->regex('%^(-?[0-9]+);%S', $data, $this->offset);
+		$match = $this->regex('%^(-?[0-9]+);%S');
 		return (int)$match[1];
 	}
 
@@ -100,7 +106,7 @@ class Unserializer {
 				(E\+[0-9]+)? # optional exponent
 			);
 		%xS';
-		$match = $this->regex($pattern, $data, $offset);
+		$match = $this->regex($pattern);
 		return (double)$match[1];
 	}
 

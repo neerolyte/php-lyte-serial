@@ -6,14 +6,39 @@ if (!class_exists('PHPUnit_Framework_TestCase')) {
 	class_alias('PHPUnit\\Framework\\TestCase','PHPUnit_Framework_TestCase');
 }
 class TestUnserializer extends \PHPUnit_Framework_TestCase {
-	public function checkUnserialize($data) {
-		$string = serialize($data);
-		$this->checkUnserializesTo($string, $data);
+	public function getDataForUnserializes() {
+		return array(
+			array(null),
+			array("foo"),
+			array("bar"),
+			array("foobarbaz"),
+			array("foobarbazfoobarbazfoobarbaz"),
+			array("foo\x00bar"),
+			array("😄👏🎆"),
+			array("你好世界"),
+			array("\x93bendy quotes\x94"),
+			array(array()),
+			array(array(1)),
+			array(array('foo')),
+			array(array(chr(0) => chr(0))),
+			array(true),
+			array(false),
+			array(1),
+			array(-42),
+			array(1.23),
+			array(.987129837123),
+			array(-812673987612398761298736129367),
+			array(array('foo' => array('bar'))),
+			array(array('foo' => array(serialize('bar')))),
+		);
 	}
 
-	public function checkUnserializesTo($string, $data) {
+	/**
+	 * @dataProvider getDataForUnserializes
+	 */
+	public function testUnserializes($data) {
+		$string = serialize($data);
 		$serial = new Unserializer($string);
-		$offset = 0;
 		$actualData = $serial->unserialize();
 		$this->assertSame($data, $actualData);
 		$this->assertSame(
@@ -23,141 +48,144 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 		);
 	}
 
-	public function testNull() {
-		$this->checkUnserialize(null);
+	public function getDataForUnserializeFails() {
+		return array(
+			array('b:1', 'missing trailing ";" on boolean'),
+			array("b:3;", "bools are only 1 or 0"),
+			array("i:12-12;", "can't have minus sign in the middle of integer"),
+			array(serialize(new \stdClass())),
+			array(serialize(array(new \stdClass()))),
+			array('C:8:"stdClass":0:{}'),
+			array('a:3:{}', 'array with incorrect length'),
+			array("N;\x00", 'trailing bytes'),
+		);
 	}
 
-	public function testString() {
-		$this->checkUnserialize("foo");
-		$this->checkUnserialize("bar");
-		$this->checkUnserialize("foobarbaz");
-		$this->checkUnserialize("foobarbazfoobarbazfoobarbaz");
-		$this->checkUnserialize("foo\x00bar");
-		$this->checkUnserialize("😄👏🎆");
-		$this->checkUnserialize("你好世界");
-		$this->checkUnserialize("\x93bendy quotes\x94");
-	}
-
-	public function testArray() {
-		$this->checkUnserialize(array());
-		$this->checkUnserialize(array(1));
-		$this->checkUnserialize(array('foo'));
-		$this->checkUnserialize(array(chr(0) => chr(0)));
-	}
-
-	public function testBool() {
-		$this->checkUnserializesTo('b:1;', true);
-		$this->checkMalicious('b:1');
-		$this->checkUnserializesTo('b:0;', false);
-		$this->checkMalicious("b:3;");
-	}
-
-	public function testInt() {
-		$this->checkUnserialize(1);
-		$this->checkUnserialize(-42);
-		$this->checkMalicious("i:12-12;");
-	}
-
-	public function testDouble() {
-		$this->checkUnserialize(1.23);
-		$this->checkUnserialize(.987129837123);
-		$this->checkUnserialize(-812673987612398761298736129367);
-	}
-
-	public function testComplex() {
-		$this->checkUnserialize(array('foo' => array('bar')));
-		$this->checkUnserialize(array('foo' => array(serialize('bar'))));
-	}
-
-	public function checkMalicious($str) {
-		$serial = new Unserializer($str);
-		$this->checkMethodThrows($serial, 'unserialize');
-	}
-
-	public function testMalicious() {
-		$this->checkMalicious(serialize(new \stdClass()));
-		$this->checkMalicious(serialize(array(new \stdClass())));
-		$this->checkMalicious('C:8:"stdClass":0:{}');
-		$this->checkMalicious('a:3:{}');
-		$this->checkMalicious("N;\x00");
-	}
-
-	public function testExpect() {
-		$that = $this;
-		$checkExpectThrows = function($data, $chars) use ($that) {
-			$serial = new Unserializer($data);
-			//$serial->offset = ;
-			$that->checkMethodThrows(
-				$serial,
-				'expect',
-				array($chars),
-				"/^Unexpected character at /"
-			);
-		};
-		$checkExpect = function($args, $expected) use ($that) {
-			$serial = new Unserializer($args[0]);
-			$serial->offset = $args[1];
-			$serial->expect($args[2]);
-			$this->assertSame($expected, $serial->offset);
-		};
-
-		$checkExpect(array('1234', 0, '123'), 3);
-		$checkExpect(array('123', 2, '3'), 3);
-		$checkExpect(array('123', 0, '12'), 2);
-		$checkExpectThrows('12', '2');
-		$checkExpectThrows('12', '23');
-	}
-
-	public function checkMethodThrows($object, $method, $args = array(), $exceptionRe = '/./') {
+	/**
+	 * @dataProvider getDataForUnserializeFails
+	 */
+	public function testUnserializeFails($string, $desc = null) {
+		$serial = new Unserializer($string);
 		$caught = false;
 		try {
-			call_user_func_array(array($object, $method), $args);
+			$serial->unserialize();
 		} catch (\Exception $e) {
 			$caught = true;
-			$this->assertRegExp($exceptionRe, $e->getMessage());
 		}
-		$this->assertTrue($caught);
+		$this->assertTrue($caught, $desc);
 	}
 
-	public function testLength() {
-		$that = $this;
-		$checkValidLength = function($data, $offset, $expectedLength, $expectedOffset) use ($that) {
-			$serial = new Unserializer($data);
-			$serial->offset = $offset;
-			$length = $serial->getLength();
-			$this->assertSame($expectedLength, $length);
-			$this->assertSame($expectedOffset, $serial->offset);
-		};
-		$checkValidLength('1:', 0, 1, 1);
-		$checkValidLength('12:', 0, 12, 2);
-		$checkValidLength('12345:', 1, 2345, 5);
-
-		$checkInvalidLength = function($data, $offset) use ($that) {
-			$serial = new Unserializer($data);
-			$serial->offset = $offset;
-			$that->checkMethodThrows($serial, 'getLength', array($data, &$offset), '/Unable to determine length/');
-		};
-
-		$checkInvalidLength('1', 0);
-		$checkInvalidLength(':1', 1);
-		$checkInvalidLength('1234123', 1);
+	public function testCanNotInstantiateWithObject() {
+		$this->expectExceptionMessage('Data supplied for unserialization was not a string');
+		new Unserializer(new \stdClass());
 	}
 
-	public function testGetType() {
-		$that = $this;
-		$checkGetType = function($data, $expectedType, $offset = 0, $expectedOffset = 1) use ($that) {
-			$serial = new Unserializer($data);
-			$serial->offset = $offset;
-			$type = $serial->getType();
-			$this->assertSame($expectedType, $type);
-			$this->assertSame($expectedOffset, $serial->offset);
-		};
-		$checkGetType('a:', 'array');
-		$checkGetType('Xa:', 'array', 1, 2);
-		$checkGetType('N;', 'null');
-		$checkGetType('s:', 'string');
+	public function testUnserializeStdClass() {
+		$this->expectExceptionMessage("Unhandled type 'O'");
+		(new Unserializer(serialize(new \stdClass())))->unserialize();
+	}
 
-		$serial = new Unserializer('O:');
-		$this->checkMethodThrows($serial, 'getType', array(), "/^Unhandled type 'O'$/");
+	public function getDataForExpectPassing() {
+		return array(
+			array('1234', '123', 0, 3),
+			array('123', '3', 2, 3),
+			array('123', '12', 0, 2),
+		);
+	}
+
+	/**
+	 * @param $data
+	 * @param $chars
+	 * @dataProvider getDataForExpectPassing
+	 */
+	public function testExpectPassing($data, $chars, $offset, $expectedOffset) {
+		$serial = new Unserializer($data);
+		$serial->offset = $offset;
+		$serial->expect($chars);
+		$this->assertSame($expectedOffset, $serial->offset);
+	}
+
+	public function getDataForExpectFailing() {
+		return array(
+			array('12', '2'),
+			array('12', '123'),
+		);
+	}
+
+	/**
+	 * @dataProvider getDataForExpectFailing
+	 */
+	public function testExpectFailing($data, $chars) {
+		$serial = new Unserializer($data);
+		$this->expectException('Exception');
+		$serial->expect($chars);
+
+	}
+
+	public function getDataForGetLength() {
+		return array(
+			array('1:', 0, 1, 1),
+			array('12:', 0, 12, 2),
+			array('12345:', 1, 2345, 5),
+		);
+	}
+
+	/**
+	 * @dataProvider getDataForGetLength
+	 */
+	public function testGetLength($data, $offset, $expectedLength, $expectedOffset) {
+		$serial = new Unserializer($data);
+		$serial->offset = $offset;
+		$length = $serial->getLength();
+		$this->assertSame($expectedLength, $length);
+		$this->assertSame($expectedOffset, $serial->offset);
+	}
+
+	public function getDataForInvalidLengths() {
+		return array(
+			array('1'),
+			array(':1', 1),
+			array('1234123', 1),
+		);
+	}
+
+	/**
+	 * @dataProvider getDataForInvalidLengths
+	 */
+	public function testInvalidLength($data, $offset = 0) {
+		$serial = new Unserializer($data);
+		$serial->offset = $offset;
+		$this->expectException('Exception');
+		$this->expectExceptionMessage('Unable to determine length');
+		$serial->getLength();
+	}
+
+	public function getDataForGetTypes() {
+		return array(
+			array('a', 'array'),
+			array('Xa', 'array', 1, 2),
+			array('N', 'null'),
+			array('s', 'string'),
+			array('b', 'boolean'),
+			array('i', 'integer'),
+			array('d', 'double'),
+		);
+	}
+
+	/**
+	 * @dataProvider getDataForGetTypes
+	 */
+	public function testGetType($data, $expectedType, $offset = 0, $expectedOffset = 1) {
+		$serial = new Unserializer($data);
+		$serial->offset = $offset;
+		$type = $serial->getType();
+		$this->assertSame($expectedType, $type);
+		$this->assertSame($expectedOffset, $serial->offset);
+	}
+
+	public function testGetTypeOfObject() {
+		$this->expectException('Exception');
+		$this->expectExceptionMessage("Unhandled type 'O'");
+		(new Unserializer('O:'))->unserialize();
 	}
 }
