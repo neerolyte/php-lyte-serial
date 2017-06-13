@@ -60,14 +60,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 
 	public function checkMalicious($str) {
 		$serial = new LyteSafeUnserialise();
-		$caught = false;
-		$obj = false;
-		try {
-			$obj = $serial->unserialize($str);
-		} catch (Exception $e) {
-			$caught = true;
-		}
-		$this->assertTrue($caught, "Resulting object: ".var_export($object, true));
+		$this->checkMethodThrows($serial, 'unserialize', array($str));
 	}
 
 	public function testMalicious() {
@@ -79,54 +72,42 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	}
 
 	public function testExpect() {
-		$tests = array(
-			array(
-				'data' => '123',
-				'offset' => 0,
-				'expected' => '12',
-				'result' => 2,
-			),
-			array(
-				'data' => '123',
-				'offset' => 2,
-				'expected' => '3',
-				'result' => 3,
-			),
-			array(
-				'data' => '1234',
-				'offset' => 0,
-				'expected' => '234',
-				'result' => 3,
-			),
-			array(
-				'data' => '12',
-				'offset' => 0,
-				'expected' => '23',
-				'result' => null,
-			),
-			array(
-				'data' => '12',
-				'offset' => 0,
-				'expected' => '3',
-				'result' => null,
-			),
-		);
-		$serial = new LyteSafeUnserialise();
+		$that = $this;
+		$checkExpectThrows = function($args) use ($that) {
+			$serial = new LyteSafeUnserialise();
+			// turn $offset in to a reference
+			$offset = $args[1];
+			$args[1] = &$offset;
+			$that->checkMethodThrows(
+				$serial,
+				'expect',
+				$args,
+				"/^Unexpected character at /"
+			);
+		};
+		$checkExpect = function($args, $expected) use ($that) {
+			$serial = new LyteSafeUnserialise();
+			$offset = $args[1];
+			$serial->expect($args[0], $offset, $args[2]);
+			$this->assertSame($expected, $offset);
+		};
 
-		foreach ($tests as $test) {
-			extract($test);
-			$desc = json_encode($test);
-			$caught = false;
-			try {
-				$serial->expect($data, $offset, $expected);
-				$this->assertSame($result, $offset, $desc);
-			} catch (Exception $e) {
-				$caught = true;
-			}
-			if ($result === null) {
-				$this->assertTrue($caught);
-			}
+		$checkExpect(array('1234', 0, '123'), 3);
+		$checkExpect(array('123', 2, '3'), 3);
+		$checkExpect(array('123', 0, '12'), 2);
+		$checkExpectThrows(array('12', 0, '2'));
+		$checkExpectThrows(array('12', 0, '23'));
+	}
+
+	public function checkMethodThrows($object, $method, $args, $exceptionRe = '/./') {
+		$caught = false;
+		try {
+			call_user_func_array(array($object, $method), $args);
+		} catch (Exception $e) {
+			$caught = true;
+			$this->assertRegExp($exceptionRe, $e->getMessage());
 		}
+		$this->assertTrue($caught);
 	}
 
 	public function testLength() {
@@ -142,13 +123,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 		$checkValidLength('12345:', 1, 2345, 5);
 
 		$checkInvalidLength = function($data, $offset) use ($that, $serial) {
-			$caught = false;
-			try {
-				$serial->getLength($data, $offset);
-			} catch (Exception $e) {
-				$caught = true;
-			}
-			$this->assertTrue($caught);
+			$that->checkMethodThrows($serial, 'getLength', array($data, &$offset), '/Unable to determine length/');
 		};
 
 		$checkInvalidLength('1', 0);
@@ -157,43 +132,21 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	}
 
 	public function testGetType() {
-		$tests = array(
-			array(
-				'data' => 'a:',
-				'expectedOffset' => 1,
-				'expectedType' => 'array',
-			),
-			array(
-				'data' => 'N;',
-				'expectedOffset' => 1,
-				'expectedType' => 'null',
-			),
-			array(
-				'data' => 's:',
-				'expectedOffset' => 1,
-				'expectedType' => 'string',
-			),
-			array(
-				'data' => 'O:',
-				'throws' => true,
-			),
-		);
-		$serial = new LyteSafeUnserialise();
+		$that = $this;
+		$checkGetType = function($data, $expectedType, $offset = 0, $expectedOffset = 1) use ($that) {
+			$serial = new LyteSafeUnserialise();
+			$type = $serial->getType($data, $offset);
+			$this->assertSame($expectedType, $type);
+			$this->assertSame($expectedOffset, $offset);
+		};
+		$checkGetType('a:', 'array');
+		$checkGetType('Xa:', 'array', 1, 2);
+		$checkGetType('N;', 'null');
+		$checkGetType('s:', 'string');
 
-		foreach ($tests as $test) {
-			$throws = false;
-			extract($test);
-			$offset = 0;
-			$caught = false;
-			try {
-				$type = $serial->getType($data, $offset);
-				$this->assertSame($expectedType, $type);
-				$this->assertSame($expectedOffset, $offset);
-			} catch (Exception $e) {
-				$caught = true;
-			}
-			$this->assertSame($throws, $caught);
-		}
+		$serial = new LyteSafeUnserialise();
+		$offset = 0;
+		$this->checkMethodThrows($serial, 'getType', array('O:', &$offset), "/^Unhandled type 'O'$/");
 	}
 
 	public function testMultibyte() {

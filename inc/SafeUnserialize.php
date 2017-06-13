@@ -39,7 +39,7 @@ class LyteSafeUnserialise {
 	public function expect($data, &$offset, $expected) {
 		for ($i = 0; $i < strlen($expected); $i++) {
 			if ($expected[$i] !== $data[$offset]) {
-				throw new Exception("Unpexcted character at $offset, got '{$data[$offset]}' expecting '{$expected[$i]}'.");
+				throw new Exception("Unexpected character at $offset, got '{$data[$offset]}' expecting '{$expected[$i]}'");
 			}
 			$offset++;
 		}
