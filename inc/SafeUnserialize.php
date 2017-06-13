@@ -58,19 +58,23 @@ class LyteSafeUnserialise {
 		return $str;
 	}
 
+	public function regex($pattern, $data, &$offset) {
+		if (!preg_match($pattern, substr($data, $offset), $match)) {
+			throw new Exception("Unable to detect pattern at $offset");
+		}
+		$offset += strlen($match[0]);
+		return $match;
+	}
+
 	public function unserializeInteger($data, &$offset) {
 		$this->expect($data, $offset, ':');
-		if (!preg_match('%^(-?[0-9]+);%', substr($data, $offset), $match)) {
-			throw new Exception("Unable to find integer at $offset");
-		}
-		$res = (int)$match[1];
-		$offset += strlen($match[0]);
-		return $res;
+		$match = $this->regex('%^(-?[0-9]+);%S', $data, $offset);
+		return (int)$match[1];
 	}
 
 	public function unserializeDouble($data, &$offset) {
 		$this->expect($data, $offset, ':');
-		static $re = '%^
+		static $pattern = '%^
 			(
 				-? # optionally negative
 				[0-9]+ # number must exist
@@ -78,12 +82,8 @@ class LyteSafeUnserialise {
 				(E\+[0-9]+)? # optional exponent
 			);
 		%xS';
-		if (!preg_match($re, substr($data, $offset), $match)) {
-			throw new Exception("Unable to find double at $offset");
-		}
-		$res = (double)$match[1];
-		$offset += strlen($match[0]);
-		return $res;
+		$match = $this->regex($pattern, $data, $offset);
+		return (double)$match[1];
 	}
 
 	public function unserializeBoolean($data, &$offset) {
