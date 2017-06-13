@@ -1,5 +1,5 @@
 <?php
-class LyteSafeUnserialise {
+class LyteSafeUnserialize {
 	public function unserialize($data) {
 		if (!is_string($data)) {
 			throw new Exception("Data supplied for unserialisation was not a string.");
