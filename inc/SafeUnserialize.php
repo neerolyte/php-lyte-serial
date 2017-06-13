@@ -1,13 +1,14 @@
 <?php
-class LyteSafeUnserialize {
+namespace Lyte\Serial;
+class Unserializer {
 	public function unserialize($data) {
 		if (!is_string($data)) {
-			throw new Exception("Data supplied for unserialisation was not a string.");
+			throw new \Exception("Data supplied for unserialisation was not a string.");
 		}
 		$offset = 0;
 		$ret = $this->_unserialize($data, $offset);
 		if ($offset !== strlen($data)) {
-			throw new Exception("Data continues beyond end of initial value");
+			throw new \Exception("Data continues beyond end of initial value");
 		}
 		return $ret;
 	}
@@ -28,7 +29,7 @@ class LyteSafeUnserialize {
 		);
 		$type = $data[$offset];
 		if (!isset($types[$type])) {
-			throw new Exception("Unhandled type '{$type}'");
+			throw new \Exception("Unhandled type '{$type}'");
 		}
 		$offset++;
 		return $types[$type];
@@ -37,7 +38,7 @@ class LyteSafeUnserialize {
 	public function expect($data, &$offset, $expected) {
 		for ($i = 0; $i < strlen($expected); $i++) {
 			if ($expected[$i] !== $data[$offset]) {
-				throw new Exception("Unexpected character at $offset, got '{$data[$offset]}' expecting '{$expected[$i]}'");
+				throw new \Exception("Unexpected character at $offset, got '{$data[$offset]}' expecting '{$expected[$i]}'");
 			}
 			$offset++;
 		}
@@ -60,7 +61,7 @@ class LyteSafeUnserialize {
 
 	public function regex($pattern, $data, &$offset) {
 		if (!preg_match($pattern, substr($data, $offset), $match)) {
-			throw new Exception("Unable to detect pattern at $offset");
+			throw new \Exception("Unable to detect pattern at $offset");
 		}
 		$offset += strlen($match[0]);
 		return $match;
@@ -94,7 +95,7 @@ class LyteSafeUnserialize {
 		$this->expect($data, $offset, ':');
 		$val = $data[$offset];
 		if (!isset($map[$val])) {
-			throw new Exception("$val is not an acceptable boolean");
+			throw new \Exception("$val is not an acceptable boolean");
 		}
 		$offset++;
 		$this->expect($data, $offset, ';');
@@ -130,7 +131,7 @@ class LyteSafeUnserialize {
 			$length .= $data[$offset];
 			$offset++;
 			if (!isset($data[$offset])) {
-				throw new Exception('Unable to determine length');
+				throw new \Exception('Unable to determine length');
 			}
 		} while ($data[$offset] >= '0' && $data[$offset] <= '9');
 		return (int)$length;

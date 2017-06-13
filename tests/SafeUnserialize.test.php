@@ -1,13 +1,14 @@
 <?php
-
+namespace Lyte\Serial\Tests;
+use Lyte\Serial\Unserializer;
 require_once(dirname(__DIR__).'/inc/SafeUnserialize.php');
 if (!class_exists('PHPUnit_Framework_TestCase')) {
 	class_alias('PHPUnit\\Framework\\TestCase','PHPUnit_Framework_TestCase');
 }
-class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
+class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	public function checkUnserialize($data) {
 		$string = serialize($data);
-		$serial = new LyteSafeUnserialize();
+		$serial = new Unserializer();
 		$offset = 0;
 		$stringUnserialized = $serial->_unserialize($string, $offset);
 		$this->assertSame($data, $stringUnserialized);
@@ -40,11 +41,13 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	public function testBool() {
 		$this->checkUnserialize(true);
 		$this->checkUnserialize(false);
+		$this->checkMalicious("b:3;");
 	}
 
 	public function testInt() {
 		$this->checkUnserialize(1);
 		$this->checkUnserialize(-42);
+		$this->checkMalicious("i:12-12;");
 	}
 
 	public function testDouble() {
@@ -59,13 +62,13 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	}
 
 	public function checkMalicious($str) {
-		$serial = new LyteSafeUnserialize();
+		$serial = new Unserializer();
 		$this->checkMethodThrows($serial, 'unserialize', array($str));
 	}
 
 	public function testMalicious() {
-		$this->checkMalicious(serialize(new stdClass()));
-		$this->checkMalicious(serialize(array(new stdClass())));
+		$this->checkMalicious(serialize(new \stdClass()));
+		$this->checkMalicious(serialize(array(new \stdClass())));
 		$this->checkMalicious('C:8:"stdClass":0:{}');
 		$this->checkMalicious('a:3:{}');
 		$this->checkMalicious("N;\x00");
@@ -74,7 +77,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	public function testExpect() {
 		$that = $this;
 		$checkExpectThrows = function($args) use ($that) {
-			$serial = new LyteSafeUnserialize();
+			$serial = new Unserializer();
 			// turn $offset in to a reference
 			$offset = $args[1];
 			$args[1] = &$offset;
@@ -86,7 +89,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 			);
 		};
 		$checkExpect = function($args, $expected) use ($that) {
-			$serial = new LyteSafeUnserialize();
+			$serial = new Unserializer();
 			$offset = $args[1];
 			$serial->expect($args[0], $offset, $args[2]);
 			$this->assertSame($expected, $offset);
@@ -103,7 +106,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 		$caught = false;
 		try {
 			call_user_func_array(array($object, $method), $args);
-		} catch (Exception $e) {
+		} catch (\Exception $e) {
 			$caught = true;
 			$this->assertRegExp($exceptionRe, $e->getMessage());
 		}
@@ -111,7 +114,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	}
 
 	public function testLength() {
-		$serial = new LyteSafeUnserialize();
+		$serial = new Unserializer();
 		$that = $this;
 		$checkValidLength = function($data, $offset, $expectedLength, $expectedOffset) use ($that, $serial) {
 			$length = $serial->getLength($data, $offset);
@@ -134,7 +137,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 	public function testGetType() {
 		$that = $this;
 		$checkGetType = function($data, $expectedType, $offset = 0, $expectedOffset = 1) use ($that) {
-			$serial = new LyteSafeUnserialize();
+			$serial = new Unserializer();
 			$type = $serial->getType($data, $offset);
 			$this->assertSame($expectedType, $type);
 			$this->assertSame($expectedOffset, $offset);
@@ -144,7 +147,7 @@ class TestLyteSafeUnserialize extends PHPUnit_Framework_TestCase {
 		$checkGetType('N;', 'null');
 		$checkGetType('s:', 'string');
 
-		$serial = new LyteSafeUnserialize();
+		$serial = new Unserializer();
 		$offset = 0;
 		$this->checkMethodThrows($serial, 'getType', array('O:', &$offset), "/^Unhandled type 'O'$/");
 	}
