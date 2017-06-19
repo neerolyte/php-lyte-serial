@@ -19,5 +19,10 @@
     "test": [
       "phpunit --verbose --debug"
     ]
+  },
+  "autoload": {
+    "psr-4": {
+      "Lyte\\Serial\\": "src/"
+    }
   }
 }

@@ -1,11 +1,7 @@
 <?php
 namespace Lyte\Serial\Tests;
 use Lyte\Serial\Unserializer;
-require_once(dirname(__DIR__).'/inc/SafeUnserialize.php');
-if (!class_exists('PHPUnit_Framework_TestCase')) {
-	class_alias('PHPUnit\\Framework\\TestCase','PHPUnit_Framework_TestCase');
-}
-class TestUnserializer extends \PHPUnit_Framework_TestCase {
+class TestUnserializer extends TestCase {
 	public function getDataForUnserializes() {
 		return array(
 			array(null),
@@ -185,17 +181,5 @@ class TestUnserializer extends \PHPUnit_Framework_TestCase {
 	public function testGetTypeOfObject() {
 		$this->setExpectedException('Exception', "Unhandled type 'O'");
 		(new Unserializer('O:'))->unserialize();
-	}
-
-	/**
-	 * PHPUnit compatibility shim
-	 */
-	public function setExpectedException($type, $message = '', $code = null) {
-		if (is_callable('parent::setExpectedException')) {
-			return parent::setExpectedException($type, $message);
-		}
-		$this->expectException($type);
-		if (!empty($message))
-			$this->expectExceptionMessage($message);
 	}
 }
