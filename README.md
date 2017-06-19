@@ -4,6 +4,22 @@
 
 PHP Serialized string array and scalar unserialization using pure PHP.
 
+# Usage
+
+Install with composer:
+
+```
+composer require lyte/serial
+```
+
+Use it:
+
+```php
+use Lyte\Serial\Unserializer;
+$serial = new Unserializer($someSerializedString);
+$deserialized = $serial->unserialize();
+```
+
 # Why?
 
 The standard `serialize()` and `unserialize()` calls in PHP are known to be unsafe even if you use the `$allowed_classes` filter in PHP 7 (there are memory corruption bugs).
