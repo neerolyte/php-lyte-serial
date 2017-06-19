@@ -5,4 +5,5 @@ php:
  - '5.6'
  - '7.0'
  - '7.1'
-script: phpunit --verbose --coverage-text
+before_script: composer up
+script: ./vendor/bin/phpunit --verbose --coverage-text

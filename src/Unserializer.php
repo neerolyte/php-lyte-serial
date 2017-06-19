@@ -22,16 +22,22 @@ class Unserializer {
 		$this->length = strlen($data);
 	}
 
+	/**
+	 * Unserialize the entire string
+	 */
 	public function unserialize() {
 		$this->offset = 0;
-		$ret = $this->_unserialize();
+		$ret = $this->unserializeComponent();
 		if ($this->offset !== $this->length) {
 			throw new \Exception("Data continues beyond end of initial value");
 		}
 		return $ret;
 	}
 
-	private function _unserialize() {
+	/**
+	 * Unserialize the component at the current offset
+	 */
+	private function unserializeComponent() {
 		$method = 'unserialize'.$this->getType();
 		$ret = $this->$method();
 		return $ret;
@@ -135,8 +141,8 @@ class Unserializer {
 		$arr = array();
 
 		for ($i = 0; $i < $length; $i++) {
-			$key = $this->_unserialize();
-			$val = $this->_unserialize();
+			$key = $this->unserializeComponent();
+			$val = $this->unserializeComponent();
 			$arr[$key] = $val;
 		}
 
