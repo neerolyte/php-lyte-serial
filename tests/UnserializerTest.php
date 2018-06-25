@@ -1,7 +1,7 @@
 <?php
 namespace Lyte\Serial\Tests;
 use Lyte\Serial\Unserializer;
-class TestUnserializer extends TestCase {
+class UnserializerTest extends TestCase {
 	public function getDataForUnserializes() {
 		return array(
 			array(null),
