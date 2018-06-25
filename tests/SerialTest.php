@@ -32,5 +32,7 @@ class SerialTest extends TestCase {
 		$this->assertSame(false, Serial::isSerialized(false));
 		$this->assertSame(true, Serial::isSerialized(serialize(false)));
 		$this->assertSame(true, Serial::isSerialized(serialize(null)));
+		$this->assertSame(false, $serial->isSerialized(''));
+		$this->assertSame(false, Serial::isSerialized([]));
 	}
 }
