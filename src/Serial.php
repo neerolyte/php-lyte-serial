@@ -8,7 +8,7 @@ class Serial {
 	public static function isSerialized($string) {
 		try {
 			self::unserialize($string);
-		} catch (\Exception $e) {
+		} catch (Exception $e) {
 			return false;
 		}
 		return true;

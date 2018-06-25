@@ -16,7 +16,7 @@ class Unserializer {
 
 	public function __construct($data) {
 		if (!is_string($data)) {
-			throw new \Exception("Data supplied for unserialization was not a string");
+			throw new Exception("Data supplied for unserialization was not a string");
 		}
 		$this->data = $data;
 		$this->length = strlen($data);
@@ -29,7 +29,7 @@ class Unserializer {
 		$this->offset = 0;
 		$ret = $this->unserializeComponent();
 		if ($this->offset !== $this->length) {
-			throw new \Exception("Data continues beyond end of initial value");
+			throw new Exception("Data continues beyond end of initial value");
 		}
 		return $ret;
 	}
@@ -52,9 +52,12 @@ class Unserializer {
 			'b' => 'boolean',
 			'd' => 'double',
 		);
+		if (!isset($this->data[$this->offset])) {
+			throw new Exception("Insufficient data to get type at offset {$this->offset}");
+		}
 		$type = $this->data[$this->offset];
 		if (!isset($types[$type])) {
-			throw new \Exception("Unhandled type '{$type}'");
+			throw new Exception("Unhandled type '{$type}'");
 		}
 		$this->offset++;
 		return $types[$type];
@@ -64,10 +67,10 @@ class Unserializer {
 		$length = strlen($expected);
 		for ($i = 0; $i < $length; $i++) {
 			if ($i >= $this->length) {
-				throw new \Exception("Ran out of data");
+				throw new Exception("Ran out of data");
 			}
 			if ($expected[$i] !== $this->data[$this->offset]) {
-				throw new \Exception("Unexpected character at {$this->offset}, got '{$this->data[$this->offset]}' expecting '{$expected[$i]}'");
+				throw new Exception("Unexpected character at {$this->offset}, got '{$this->data[$this->offset]}' expecting '{$expected[$i]}'");
 			}
 			$this->offset++;
 		}
@@ -90,7 +93,7 @@ class Unserializer {
 
 	public function regex($pattern) {
 		if (!preg_match($pattern, substr($this->data, $this->offset), $match)) {
-			throw new \Exception("Unable to detect pattern at {$this->offset}");
+			throw new Exception("Unable to detect pattern at {$this->offset}");
 		}
 		$this->offset += strlen($match[0]);
 		return $match;
@@ -124,7 +127,7 @@ class Unserializer {
 		$this->expect(':');
 		$val = $this->data[$this->offset];
 		if (!isset($map[$val])) {
-			throw new \Exception("$val is not an acceptable boolean");
+			throw new Exception("$val is not an acceptable boolean");
 		}
 		$this->offset++;
 		$this->expect(';');
@@ -160,7 +163,7 @@ class Unserializer {
 			$length .= $this->data[$this->offset];
 			$this->offset++;
 			if (!isset($this->data[$this->offset])) {
-				throw new \Exception('Unable to determine length');
+				throw new Exception('Unable to determine length');
 			}
 		} while ($this->data[$this->offset] >= '0' && $this->data[$this->offset] <= '9');
 		return (int)$length;
