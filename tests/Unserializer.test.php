@@ -45,22 +45,22 @@ class TestUnserializer extends TestCase {
 	}
 
 	public function getDataForUnserializeFails() {
-		return array(
-			array('b:1', 'missing trailing ";" on boolean'),
-			array("b:3;", "bools are only 1 or 0"),
-			array("i:12-12;", "can't have minus sign in the middle of integer"),
-			array(serialize(new \stdClass())),
-			array(serialize(array(new \stdClass()))),
-			array('C:8:"stdClass":0:{}'),
-			array('a:3:{}', 'array with incorrect length'),
-			array("N;\x00", 'trailing bytes'),
-		);
+		return [
+			['b:1', 'missing trailing ";" on boolean'],
+			["b:3;", "bools are only 1 or 0"],
+			["i:12-12;", "can't have minus sign in the middle of integer"],
+			[serialize(new \stdClass()), "No classes allowed"],
+			[serialize([new \stdClass()]), "No classes allowed even in arrays"],
+			['C:8:"stdClass":0:{}', "No constructors allowed either"],
+			['a:3:{}', 'array with incorrect length'],
+			["N;\x00", 'trailing bytes'],
+		];
 	}
 
 	/**
 	 * @dataProvider getDataForUnserializeFails
 	 */
-	public function testUnserializeFails($string, $desc = null) {
+	public function testUnserializeFails($string, $desc) {
 		$serial = new Unserializer($string);
 		$caught = false;
 		try {
