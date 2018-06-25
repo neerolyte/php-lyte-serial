@@ -12,12 +12,42 @@ Install with composer:
 composer require lyte/serial
 ```
 
-Use it:
+## Serial
+
+`Serial` is a simplified interface that attempts to work well in a legacy code
+base.
+
+Load the namespace:
+
+```php
+use Lyte\Serial\Serial;
+// unserialize statically
+$unserialized = Serial::unserialize($someSerializedString);
+// or with an instance
+$serial = new Serial;
+$unserialized = $serial->unserialize($someSerializedString);
+
+// check if a string appears to be serialized
+if (Serial::isSerialized($someUnknownString)) {
+	$unserialized = Serial::unserialize($someUnknownString);
+}
+
+// or rely on exceptions
+try {
+	$unserialized = Serial::unserialize($someUnknownString);
+} catch (\Exception $e) {
+	// ...
+}
+```
+
+## Unserializer
+
+`Unserializer` is the internal work horse.
 
 ```php
 use Lyte\Serial\Unserializer;
 $serial = new Unserializer($someSerializedString);
-$deserialized = $serial->unserialize();
+$unserialized = $serial->unserialize();
 ```
 
 # Why?
