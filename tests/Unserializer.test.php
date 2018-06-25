@@ -113,9 +113,13 @@ class TestUnserializer extends TestCase {
 	 */
 	public function testExpectFailing($data, $chars) {
 		$serial = new Unserializer($data);
-		$this->setExpectedException('Exception');
-		$serial->expect($chars);
-
+		$caught = false;
+		try {
+			$serial->expect($chars);
+		} catch (\Exception $e) {
+			$caught = true;
+		}
+		$this->assertTrue($caught);
 	}
 
 	public function getDataForGetLength() {
