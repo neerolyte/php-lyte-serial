@@ -13,4 +13,13 @@ class Serial {
 		}
 		return true;
 	}
+
+	/**
+	 * Rewrite incorrect s:N length prefixes using nested / quote-scan inference.
+	 *
+	 * @return array{0: string, 1: array<int, array<string, mixed>>} [repaired, lengthIssues]
+	 */
+	public static function repairSerializedString($string) {
+		return Unserializer::repairSerializedString($string);
+	}
 }

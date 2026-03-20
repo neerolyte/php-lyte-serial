@@ -1,32 +1,33 @@
 <?php
 namespace Lyte\Serial\Tests;
 use Lyte\Serial\Unserializer;
+
 class UnserializerTest extends TestCase {
-	public function getDataForUnserializes() {
-		return array(
-			array(null),
-			array("foo"),
-			array("bar"),
-			array("foobarbaz"),
-			array("foobarbazfoobarbazfoobarbaz"),
-			array("foo\x00bar"),
-			array("😄👏🎆"),
-			array("你好世界"),
-			array("\x93bendy quotes\x94"),
-			array(array()),
-			array(array(1)),
-			array(array('foo')),
-			array(array(chr(0) => chr(0))),
-			array(true),
-			array(false),
-			array(1),
-			array(-42),
-			array(1.23),
-			array(.987129837123),
-			array(-812673987612398761298736129367),
-			array(array('foo' => array('bar'))),
-			array(array('foo' => array(serialize('bar')))),
-		);
+	public static function getDataForUnserializes() {
+		return [
+			[null],
+			['foo'],
+			['bar'],
+			['foobarbaz'],
+			['foobarbazfoobarbazfoobarbaz'],
+			["foo\x00bar"],
+			['😄👏🎆'],
+			['你好世界'],
+			["\x93bendy quotes\x94"],
+			[[]],
+			[[1]],
+			[['foo']],
+			[[chr(0) => chr(0)]],
+			[true],
+			[false],
+			[1],
+			[-42],
+			[1.23],
+			[.987129837123],
+			[-812673987612398761298736129367],
+			[['foo' => ['bar']]],
+			[['foo' => [serialize('bar')]]],
+		];
 	}
 
 	/**
@@ -44,14 +45,14 @@ class UnserializerTest extends TestCase {
 		);
 	}
 
-	public function getDataForUnserializeFails() {
+	public static function getDataForUnserializeFails() {
 		return [
 			['b:1', 'missing trailing ";" on boolean'],
-			["b:3;", "bools are only 1 or 0"],
+			['b:3;', 'bools are only 1 or 0'],
 			["i:12-12;", "can't have minus sign in the middle of integer"],
-			[serialize(new \stdClass()), "No classes allowed"],
-			[serialize([new \stdClass()]), "No classes allowed even in arrays"],
-			['C:8:"stdClass":0:{}', "No constructors allowed either"],
+			[serialize(new \stdClass()), 'No classes allowed'],
+			[serialize([new \stdClass()]), 'No classes allowed even in arrays'],
+			['C:8:"stdClass":0:{}', 'No constructors allowed either'],
 			['a:3:{}', 'array with incorrect length'],
 			["N;\x00", 'trailing bytes'],
 		];
@@ -81,17 +82,15 @@ class UnserializerTest extends TestCase {
 		(new Unserializer(serialize(new \stdClass())))->unserialize();
 	}
 
-	public function getDataForExpectPassing() {
-		return array(
-			array('1234', '123', 0, 3),
-			array('123', '3', 2, 3),
-			array('123', '12', 0, 2),
-		);
+	public static function getDataForExpectPassing() {
+		return [
+			['1234', '123', 0, 3],
+			['123', '3', 2, 3],
+			['123', '12', 0, 2],
+		];
 	}
 
 	/**
-	 * @param $data
-	 * @param $chars
 	 * @dataProvider getDataForExpectPassing
 	 */
 	public function testExpectPassing($data, $chars, $offset, $expectedOffset) {
@@ -101,11 +100,11 @@ class UnserializerTest extends TestCase {
 		$this->assertSame($expectedOffset, $serial->offset);
 	}
 
-	public function getDataForExpectFailing() {
-		return array(
-			array('12', '2'),
-			array('12', '123'),
-		);
+	public static function getDataForExpectFailing() {
+		return [
+			['12', '2'],
+			['12', '123'],
+		];
 	}
 
 	/**
@@ -122,12 +121,12 @@ class UnserializerTest extends TestCase {
 		$this->assertTrue($caught);
 	}
 
-	public function getDataForGetLength() {
-		return array(
-			array('1:', 0, 1, 1),
-			array('12:', 0, 12, 2),
-			array('12345:', 1, 2345, 5),
-		);
+	public static function getDataForGetLength() {
+		return [
+			['1:', 0, 1, 1],
+			['12:', 0, 12, 2],
+			['12345:', 1, 2345, 5],
+		];
 	}
 
 	/**
@@ -141,40 +140,45 @@ class UnserializerTest extends TestCase {
 		$this->assertSame($expectedOffset, $serial->offset);
 	}
 
-	public function getDataForInvalidLengths() {
-		return array(
-			array('1'),
-			array(':1', 1),
-			array('1234123', 1),
-		);
+	public static function getDataForInvalidLengths() {
+		return [
+			['1', 0],
+			[':1', 1],
+			['1234123', 1],
+		];
 	}
 
 	/**
 	 * @dataProvider getDataForInvalidLengths
 	 */
-	public function testInvalidLength($data, $offset = 0) {
+	public function testInvalidLength($data, $offset) {
 		$serial = new Unserializer($data);
 		$serial->offset = $offset;
-		$this->setExpectedException('Exception', 'Unable to determine length');
-		$serial->getLength();
+		$caught = false;
+		try {
+			$serial->getLength();
+		} catch (\Exception $e) {
+			$caught = ($e->getMessage() === 'Unable to determine length');
+		}
+		$this->assertTrue($caught, 'Unable to determine length for data at offset ' . $offset);
 	}
 
-	public function getDataForGetTypes() {
-		return array(
-			array('a', 'array'),
-			array('Xa', 'array', 1, 2),
-			array('N', 'null'),
-			array('s', 'string'),
-			array('b', 'boolean'),
-			array('i', 'integer'),
-			array('d', 'double'),
-		);
+	public static function getDataForGetTypes() {
+		return [
+			['a', 'array', 0, 1],
+			['Xa', 'array', 1, 2],
+			['N', 'null', 0, 1],
+			['s', 'string', 0, 1],
+			['b', 'boolean', 0, 1],
+			['i', 'integer', 0, 1],
+			['d', 'double', 0, 1],
+		];
 	}
 
 	/**
 	 * @dataProvider getDataForGetTypes
 	 */
-	public function testGetType($data, $expectedType, $offset = 0, $expectedOffset = 1) {
+	public function testGetType($data, $expectedType, $offset, $expectedOffset) {
 		$serial = new Unserializer($data);
 		$serial->offset = $offset;
 		$type = $serial->getType();
@@ -185,5 +189,99 @@ class UnserializerTest extends TestCase {
 	public function testGetTypeOfObject() {
 		$this->setExpectedException('Exception', "Unhandled type 'O'");
 		(new Unserializer('O:'))->unserialize();
+	}
+
+	public function testLengthMismatchThrowsWithoutRepair() {
+		$ext = ".pdf\n.docx\n.doc\n.jpg";
+		$bad = 'a:1:{s:5:"rules";s:24:"'.$ext.'";}';
+		$this->setExpectedException('Exception', 'does not align with closing quote');
+		(new Unserializer($bad))->unserialize();
+	}
+
+	public static function getDataForRepairLengthsDisabled() {
+		return [
+			[false],
+			[0],
+			['0'],
+			['false'],
+			['no'],
+			['off'],
+			[''],
+			[null],
+		];
+	}
+
+	/**
+	 * @dataProvider getDataForRepairLengthsDisabled
+	 */
+	public function testRepairLengthsOptionDisabled($val) {
+		$ext = ".pdf\n.docx\n.doc\n.jpg";
+		$badInner = 'a:1:{s:5:"rules";s:24:"'.$ext.'";}';
+		$blob = 'a:1:{s:3:"top";s:'.strlen($badInner).':"'.$badInner.'";}';
+		$u = new Unserializer($blob, ['repairLengths' => $val]);
+		$u->unserialize();
+		$this->assertSame([], $u->lengthIssues, 'repairLengths '.var_export($val, true));
+	}
+
+	public static function getDataForRepairLengthsEnabled() {
+		return [
+			[true],
+			[1],
+			['1'],
+			['true'],
+			['yes'],
+			['on'],
+		];
+	}
+
+	/**
+	 * @dataProvider getDataForRepairLengthsEnabled
+	 */
+	public function testRepairLengthsOptionEnabled($val) {
+		$ext = ".pdf\n.docx\n.doc\n.jpg";
+		$badInner = 'a:1:{s:5:"rules";s:24:"'.$ext.'";}';
+		$blob = 'a:1:{s:3:"top";s:'.strlen($badInner).':"'.$badInner.'";}';
+		$u = new Unserializer($blob, ['repairLengths' => $val]);
+		$u->unserialize();
+		$this->assertNotSame([], $u->lengthIssues, 'repairLengths '.var_export($val, true));
+	}
+
+	public function testRepairDetectsNestedWrongStringLength() {
+		$ext = ".pdf\n.docx\n.doc\n.jpg";
+		$this->assertSame(20, strlen($ext));
+		$badInner = 'a:1:{s:5:"rules";s:24:"'.$ext.'";}';
+		$blob = 'a:1:{s:3:"top";s:'.strlen($badInner).':"'.$badInner.'";}';
+
+		$u = new Unserializer($blob, ['repairLengths' => true]);
+		$u->unserialize();
+		$this->assertNotSame([], $u->lengthIssues);
+		$issue = $u->lengthIssues[0];
+		$this->assertSame(24, $issue['declared']);
+		$this->assertSame(20, $issue['actual']);
+		$this->assertSame(['top', 'rules'], $issue['path']);
+	}
+
+	public function testRepairSerializedStringRewiresLength() {
+		$ext = ".pdf\n.docx\n.doc\n.jpg";
+		$badInner = 'a:1:{s:5:"rules";s:24:"'.$ext.'";}';
+		$blob = 'a:1:{s:3:"top";s:'.strlen($badInner).':"'.$badInner.'";}';
+
+		list($fixed) = Unserializer::repairSerializedString($blob);
+		$this->assertTrue(strpos($fixed, 's:20:"') !== false);
+		$this->assertTrue(strpos($fixed, 's:24:"') === false);
+		$check = new Unserializer($fixed, ['repairLengths' => true]);
+		$check->unserialize();
+		$this->assertSame([], $check->lengthIssues);
+	}
+
+	public function testRepairSerializedStringMatchesCanonicalUnserialize() {
+		$ext = ".pdf\n.docx\n.doc\n.jpg";
+		$badInner = 'a:1:{s:5:"rules";s:24:"'.$ext.'";}';
+		$blob = 'a:1:{s:3:"top";s:'.strlen($badInner).':"'.$badInner.'";}';
+		$goodInner = 'a:1:{s:5:"rules";s:20:"'.$ext.'";}';
+		$expectedBlob = 'a:1:{s:3:"top";s:'.strlen($goodInner).':"'.$goodInner.'";}';
+
+		list($fixed) = Unserializer::repairSerializedString($blob);
+		$this->assertSame($expectedBlob, $fixed);
 	}
 }
