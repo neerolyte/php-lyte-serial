@@ -4,6 +4,8 @@
 
 PHP Serialized string array and scalar unserialization using pure PHP.
 
+Runtime **PHP 7.3+** (aligned with PHPUnit 9 for development). The `composer.lock` is resolved for PHP 7.3 via `config.platform` so installs stay consistent on older runtimes.
+
 # Usage
 
 Install with composer:
@@ -49,6 +51,23 @@ use Lyte\Serial\Unserializer;
 $serial = new Unserializer($someSerializedString);
 $unserialized = $serial->unserialize();
 ```
+
+### Wrong `s:` byte lengths (nested payloads)
+
+If a string declares `s:N:` but the next `"` is not exactly *N* bytes later (common when counts used UTF-8 lengths, wrong newlines, or copy-paste errors), strict parsing fails. Enable inference and optional wire repair:
+
+```php
+$u = new Unserializer($blob, ['repairLengths' => true]);
+$data = $u->unserialize();
+// $u->lengthIssues lists declared vs actual lengths and digit span offsets
+
+list($fixedBlob, $issues) = Unserializer::repairSerializedString($blob);
+// or Serial::repairSerializedString($blob)
+```
+
+`repairLengths` is read with `filter_var(..., FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)` and must coerce to **strict** true (e.g. `true`, `1`, `"1"`, `"true"`, `"on"`, `"yes"`). Values such as `false`, `0`, `"0"`, `"false"`, `"no"`, `""`, `null`, or unset leave repair **off** (so string `"false"` from env/JSON does not accidentally enable it).
+
+For values that look like nested PHP serialization (`a:…`, `s:…`, etc.), the actual length is derived by parsing one full value. For other strings, repair uses the first `";` sequence with no `"` inside the payload (unsafe for arbitrary binary that may contain those bytes).
 
 # Why?
 

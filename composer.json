@@ -10,21 +10,26 @@
     }
   ],
   "require": {
-    "php": ">=5.4"
+    "php": ">=7.3"
   },
   "require-dev": {
-    "phpunit/phpunit": "*",
-    "satooshi/php-coveralls": "*"
+    "phpunit/phpunit": "^9.6",
+    "php-coveralls/php-coveralls": "^2.5"
   },
   "scripts": {
     "test": [
-      "phpunit --verbose --debug"
+      "phpunit"
     ]
   },
   "autoload": {
     "psr-4": {
       "Lyte\\Serial\\": "src/",
       "Lyte\\Serial\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "platform": {
+      "php": "7.3.33"
     }
   }
 }
